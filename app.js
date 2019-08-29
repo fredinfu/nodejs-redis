@@ -5,6 +5,13 @@ const bodyParser = require('body-parser');
 const methodOverride = require('method-override');
 const redis = require('redis');
 
+// Create Redis Client
+let client = redis.createClient();
+
+client.on('connect', () => {
+    console.log('Connected to Redis...');
+})
+
 // Set Port
 const port = 3000;
 
@@ -22,11 +29,62 @@ app.use(bodyParser.urlencoded({extended:false}));
 // methodOverride
 app.use(methodOverride('_method'));
 
-app.get('/', function(req, res, next) {
+// Default url / for searchusers view
+app.get('/', (req, res, next) => {
     res.render('searchusers');
 });
 
-app.listen(port, function() {
+app.get('/user/add', (req, res, next) => {
+    res.render('adduser');
+});
+
+app.post('/user/search', (req, res, next) => {
+    const id = req.body.id;
+
+    client.hgetall(id, (err, obj) => {
+        if (!obj) {
+            res.render('searchusers', {
+                error: 'User does not exist'
+            });
+        } else {
+            obj.id = id;
+            res.render('details', {
+                user: obj
+            })
+        }
+    });
+})
+
+
+app.post('/user/add', (req, res, next) => {
+    const id = req.body.id;
+    const first_name = req.body.first_name;
+    const last_name = req.body.last_name;
+    const email = req.body.email;
+    const phone = req.body.phone;
+
+    client.hmset(id, [
+        'first_name', first_name,
+        'last_name', last_name,
+        'email', email,
+        'phone', phone
+    ], (err, reply) => {
+        if (err) {
+            console.log(err);
+        }
+        console.log(reply);
+        res.redirect('/');
+    });
+
+    
+});
+
+app.delete('/user/delete/:id', (req, res, next) => {
+    client.del(req.params.id);
+    res.redirect('/');
+})
+
+app.listen(port, () => {
     console.log('Server started on port: '+port);
 })
 
