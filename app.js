@@ -31,14 +31,67 @@ app.use(methodOverride('_method'));
 
 // Default url / for searchusers view
 app.get('/', (req, res, next) => {
-    res.render('searchusers');
+    client.keys('*user*', (err, keys) => {
+        if(!keys){
+            res.render('redis_users', {
+                users: []
+            });
+        } else {
+            res.render('redis_users', {
+                users: keys
+            });
+        }
+    });    
 });
+
+
+// Default url / for searchusers view
+app.get('/', (req, res, next) => {
+    client.keys('*user*', (err, keys) => {
+        if(!keys){
+            res.render('redis_users', {
+                users: []
+            });
+        } else {
+            res.render('redis_users', {
+                users: keys
+            });
+        }
+    });    
+});
+
+
 
 app.get('/user/add', (req, res, next) => {
     res.render('adduser');
 });
 
+app.get('/user/search', (req, res, next) => {
+    res.render('searchusers');
+});
+
+app.get('/user/update', (req, res, next) => {
+    console.log('req.body: ',req.body);
+    console.log('req.query: ',req.query);
+    const id = req.query.id;
+    client.hgetall(id, (err, obj) => {
+        if (!obj) {
+            res.render('searchusers', {
+                error: 'Can not update user. User does not exist'
+            });
+
+        } else {
+            obj.id = id;
+            res.render('updateuser', {
+                user: obj
+            })
+        }
+    });
+    
+});
+
 app.post('/user/search', (req, res, next) => {
+    console.log(req.body);
     const id = req.body.id;
 
     client.hgetall(id, (err, obj) => {
@@ -79,7 +132,33 @@ app.post('/user/add', (req, res, next) => {
     
 });
 
+app.post('/user/update', (req, res, next) => {
+    console.log('req.body: ',req.body);
+    const id = req.body.id;
+    console.log('id: ',id);
+    const first_name = req.body.first_name;
+    const last_name = req.body.last_name;
+    const email = req.body.email;
+    const phone = req.body.phone;
+
+    client.hmset(id, [
+        'first_name', first_name,
+        'last_name', last_name,
+        'email', email,
+        'phone', phone
+    ], (err, reply) => {
+        if (err) {
+            console.log(err);
+        }
+        console.log(reply);
+        res.redirect('/');
+    });
+
+    
+});
+
 app.delete('/user/delete/:id', (req, res, next) => {
+    console.log(req);
     client.del(req.params.id);
     res.redirect('/');
 })
